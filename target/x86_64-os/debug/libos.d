@@ -1,0 +1,1 @@
+C:\Users\Jesse\Rust\rustprojects\os\target\x86_64-os\debug\libos.rlib: C:\Users\Jesse\Rust\rustprojects\os\src\gdt.rs C:\Users\Jesse\Rust\rustprojects\os\src\interrupts.rs C:\Users\Jesse\Rust\rustprojects\os\src\lib.rs C:\Users\Jesse\Rust\rustprojects\os\src\serial.rs C:\Users\Jesse\Rust\rustprojects\os\src\vga_buffer.rs
