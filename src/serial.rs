@@ -1,8 +1,18 @@
+//! Serial output support for the kernal.
+//! 
+//! Provides serial printing macros that allows kernel to send text to
+//! the host through serial port.
+
 use uart_16550::{Config, Uart16550Tty, backend::PioBackend};
 use spin::Mutex;
 use lazy_static::lazy_static;
 
 lazy_static! {
+    /// Global serial port writer.
+    /// 
+    /// 
+    /// The UART is protected by a spinlock because multiple execution
+    /// may attempt to write to the serial port at the same time.
     pub static ref SERIAL1: Mutex<Uart16550Tty<PioBackend>> = Mutex::new(unsafe {
         Uart16550Tty::new_port(0x3F8, Config::default())
             .expect("Failed to initialize UART")
@@ -10,10 +20,13 @@ lazy_static! {
 }
 
 #[doc(hidden)]
-//Writes the serial port
 pub fn _print(args: ::core::fmt::Arguments) {
     use core::fmt::Write;
-    SERIAL1.lock().write_fmt(args).expect("Printing to serial failed");
+    use x86_64::instructions::interrupts;
+
+    interrupts::without_interrupts(|| {
+        SERIAL1.lock().write_fmt(args).expect("Printing to serial failed");
+    });
 }
 
 /// Prints to the host through the serial interface
