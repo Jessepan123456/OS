@@ -4,26 +4,50 @@
 #![test_runner(os::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
+extern crate alloc;
+
+use alloc::boxed::Box;
 use core::panic::PanicInfo;
 use os::println;
+use bootloader::{BootInfo, entry_point};
+use x86_64::structures::paging::{Page};
+
+entry_point!(kernal_main);
 
 /// Kernel entry point.
 /// 
 /// Initializes the kernel, runs tests when compiled in test mode, and the netners
 /// the hlt loop to the CPU from wasting rescoures.
 // don't mangle the name of this function
-#[unsafe(no_mangle)]
-pub extern "C" fn _start() -> ! {
+fn kernal_main(boot_info: &'static BootInfo) -> ! {
+    use os::memory;
+    use os::allocator;
+    use os::memory::{BootInfoFrameAllocator};
+    use x86_64::{VirtAddr};
+
     //this function is the entry point
     //_start is the default name
     println!("Hello World{}", "!");
-
     os::init();
 
-    use x86_64::registers::control::Cr3;
+    let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset);
+    let mut mapper = unsafe { memory::init(phys_mem_offset) };
+    let mut frame_allocator = unsafe {
+        BootInfoFrameAllocator::init(&boot_info.memory_map)
+    };
 
-    let (level_4_page_table, _) = Cr3::read();
-    println!("Level 4 page table at: {:?}", level_4_page_table.start_address());
+    // // map an unused page
+    // let page = Page::containing_address(VirtAddr::new(0xdeadbeaf000));
+    // memory::create_example_mapping(page, &mut mapper, &mut frame_allocator);
+
+    // // Write the string 'New!' to the screen through the new mapping
+    // let page_ptr: *mut u64 = page.start_address().as_mut_ptr();
+    // unsafe { page_ptr.offset(400).write_volatile(0x_f021_f077_f065_f04e); }
+
+    allocator::init_heap(&mut mapper, &mut frame_allocator)
+        .expect("heap initialization failed");
+
+    let x = Box::new(41);
 
     //Runs our tests
     #[cfg(test)]
