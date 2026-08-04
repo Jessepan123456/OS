@@ -27,6 +27,7 @@ pub mod interrupts;
 pub mod gdt;
 pub mod memory;
 pub mod allocator;
+pub mod task;
 
 /// Trait implemented by functions that can be executed as kernel tests.
 /// 
