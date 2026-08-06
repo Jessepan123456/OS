@@ -1,3 +1,4 @@
+//! Heap memory allocation support for the kernel
 use alloc::alloc::{GlobalAlloc, Layout};
 use core::ptr::null_mut;
 use x86_64::{
@@ -14,15 +15,22 @@ pub mod bump;
 pub mod linked_list;
 pub mod fixed_size;
 
+/// A placeholder allocator when no allocator is initialized.
 pub struct Dummy;
+
+/// A thread-safe wrapper around an allocator
 pub struct Locked<A> {
     inner: spin::Mutex<A>,
 }
 
+/// Starting virtual address of the kernel heap
 pub const HEAP_START: usize = 0x_4444_4444_0000;
+
+//// Size of the kernel heap in bytes
 pub const HEAP_SIZE: usize = 100 * 1024; // 100 KiB
 
 #[global_allocator]
+/// The kernel's active heap allocator
 // static ALLOCATOR: Locked<BumpAllocator> = Locked::new(BumpAllocator::new());
 // static ALLOCATOR: Locked<LinkedListAllocator> = Locked::new(LinkedListAllocator::new());
 static ALLOCATOR: Locked<FixedSizeBlockAllocator> = Locked::new(
@@ -30,27 +38,35 @@ static ALLOCATOR: Locked<FixedSizeBlockAllocator> = Locked::new(
 );
 
 impl<A> Locked<A> {
+    /// Creates a new locked allocator
     pub const fn new(inner: A) -> Self {
         Locked {
             inner: spin::Mutex::new(inner),
         }
     }
 
+    /// Locks the allocator and reutns mutable access to it
     pub fn lock(&self) -> spin::MutexGuard<A> {
         self.inner.lock()
     }
 }
 
 unsafe impl GlobalAlloc for Dummy {
+    /// Attempts to allocate memory
     unsafe fn alloc(&self, _layout: Layout) -> *mut u8 {
         null_mut()
     }
 
+    /// Deallocates memory
     unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {
         panic!("deadlloc should be never called")
     }
 }
 
+/// Initializes the kernel heap.
+/// 
+/// This function maps the virtual memory pages to physical memory frame
+/// and initializes the global allocator
 pub fn init_heap(
     mapper: &mut impl Mapper<Size4KiB>,
     frame_allocator: &mut impl FrameAllocator<Size4KiB>,

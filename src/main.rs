@@ -8,7 +8,7 @@ extern crate alloc;
 
 use alloc::{boxed::Box, vec, vec::Vec, rc::Rc};
 use core::panic::PanicInfo;
-use os::{println, task::{keyboard, Task, simple_executor::SimpleExecutor}};
+use os::{println, task::{keyboard, Task, executor::Executor}};
 use bootloader::{BootInfo, entry_point};
 use x86_64::structures::paging::{Page};
 
@@ -66,7 +66,7 @@ fn kernal_main(boot_info: &'static BootInfo) -> ! {
     // core::mem::drop(reference_counted);
     // println!("reference count is {} now", Rc::strong_count(&cloned_reference));
 
-    let mut executor = SimpleExecutor::new();
+    let mut executor = Executor::new();
     executor.spawn(Task::new(example_task()));
     executor.spawn(Task::new(keyboard::print_keypresses()));
     executor.run();

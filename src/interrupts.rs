@@ -17,6 +17,9 @@ pub const PIC_1_OFFSET: u8 = 32;
 /// Offset for the second PIC.
 pub const PIC_2_OFFSET: u8 = PIC_1_OFFSET + 8;
 
+/// Programmable Interrupt Controller (PIC) chain
+/// 
+/// Receives hardware interrrupt from devices like keybooard and timer.
 pub static PICS: spin::Mutex<ChainedPics> =
     spin::Mutex::new(unsafe { ChainedPics::new(PIC_1_OFFSET, PIC_2_OFFSET) });
 
@@ -31,10 +34,12 @@ pub enum InterruptIndex {
 }    
 
 impl InterruptIndex {
+    /// Returns the interrupt vector number as u8
      fn as_u8(self) -> u8 {
         self as u8
      }
 
+     /// Returns the interrupt vector number as usize
      fn as_usize(self) -> usize {
         usize::from(self.as_u8())
      } 
@@ -66,6 +71,9 @@ pub fn init_idt() {
     IDT.load();
 }
 
+/// Handles page fault exceptions
+/// 
+/// A page fualt occurs when the CPU cannot access a virtual memory address.
 extern "x86-interrupt" fn page_fault_handler (
     stack_frame: InterruptStackFrame,
     error_code: PageFaultErrorCode,

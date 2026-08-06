@@ -1,3 +1,5 @@
+//! Heap Allocation Integration tests
+
 #![no_std]
 #![no_main]
 #![feature(custom_test_frameworks)]
@@ -13,6 +15,7 @@ use os::allocator::HEAP_SIZE;
 
 entry_point!(main);
 
+/// Entry point for hte heap allocation tests
 fn main(boot_info: &'static BootInfo) -> ! {
     use os::allocator;
     use os::memory::{self, BootInfoFrameAllocator};
@@ -31,11 +34,13 @@ fn main(boot_info: &'static BootInfo) -> ! {
     loop {}
 }
 
+/// Called when a test panics
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     os::test_panic_handler(info)
 }
 
+/// Verifies that indiviudal heap allocations succeed.
 #[test_case]
 fn simple_allocation() {
     let heap_value_1 = Box::new(41);
@@ -44,6 +49,8 @@ fn simple_allocation() {
     assert_eq!(*heap_value_2, 13);
 }
 
+/// verifies that a dynamically growing vector can allocate memory
+/// and store many vales correctly
 #[test_case]
 fn large_vec() {
     let n = 1000;
@@ -54,6 +61,7 @@ fn large_vec() {
     assert_eq!(vec.iter().sum::<u64>(), (n - 1) * n / 2);
 }
 
+/// Verifies that repeated allocations can reuse freed memory
 #[test_case]
 fn many_boxes() {
     for i in 0..HEAP_SIZE {
