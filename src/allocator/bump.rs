@@ -2,11 +2,15 @@ use super::{align_up, Locked};
 use alloc::alloc::{GlobalAlloc, Layout};
 use core::ptr;
 
-
+/// A bump allocator that allocates memory sequentially from a fixed heap.
+/// 
+/// A bump allocator keeps track of the next available address in the heap.
 pub struct BumpAllocator {
     heap_start: usize,
     heap_end: usize,
     next: usize,
+
+    /// Number of currently active allocations
     allocations: usize,
 }
 
@@ -32,11 +36,21 @@ impl BumpAllocator {
     }
 }
 
+/// Implements Rust's global allocation interface for the bump allocator.
+/// 
+/// Allocations are performed sequentially from the heap.
+/// 
+/// Deallocation does not immediately reclaim individual allocations. Instead,
+/// the allocator resets the entire heap once the number reaches zero.
 unsafe impl GlobalAlloc for Locked<BumpAllocator> {
+    /// Allocates a block of memory with requested layout.
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         let mut bump = self.lock(); // get a mutable reference
 
+        // Align the next available address
         let alloc_start = align_up(bump.next, layout.align());
+
+        // calculate the end of the allocation
         let alloc_end = match alloc_start.checked_add(layout.size()) {
             Some(end) => end,
             None => return ptr::null_mut(),
@@ -51,10 +65,13 @@ unsafe impl GlobalAlloc for Locked<BumpAllocator> {
         }
     }
 
+    /// Deallocates a previously allocated block
     unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {
         let mut bump = self.lock(); // get a mutable reference
 
         bump.allocations -= 1;
+
+        // Reset the allocator when all allocations have been freed.
         if bump.allocations == 0 {
             bump.next = bump.heap_start;
         }

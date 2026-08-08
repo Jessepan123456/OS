@@ -2,24 +2,33 @@ use super::{align_up, Locked};
 use core::{mem, ptr};
 use alloc::alloc::{GlobalAlloc, Layout};
 
+/// A node used to keep track of a free memory region.
 struct ListNode {
     size: usize,
     next: Option<&'static mut ListNode>,
 }
 
+/// A linkedd-list memory allocator
+/// 
+/// The allocator maintains a linked list of free memory regions. When an
+/// allocation is requested, the allocator searches the list for the a region
+/// large enough to satisfy the requested size and alignment.
 pub struct LinkedListAllocator {
     head: ListNode,
 }
 
 impl ListNode {
+    /// Creates a new 'ListNode' with the given region size.
     const fn new(size: usize) -> Self {
         ListNode { size, next: None }
     }
 
+    /// Returns the starting address of this memory region
     fn start_addr(&self) -> usize {
         self as *const Self as usize
     }
 
+    /// Returns the address immediately after the end of this memory region
     fn end_addr(&self) -> usize {
         self.start_addr() + self.size
     }
@@ -123,7 +132,10 @@ impl LinkedListAllocator {
     }
 }
 
+/// Implements Rust's global allocation interface for the 
+/// 'LinkedListAllocator'.
 unsafe impl GlobalAlloc for Locked<LinkedListAllocator> {
+    /// Allocates memory from the linked list of free regions
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         // perform layout adjustments
         let (size, align) = LinkedListAllocator::size_align(layout);
@@ -143,6 +155,7 @@ unsafe impl GlobalAlloc for Locked<LinkedListAllocator> {
         }
     }
 
+    /// Deallocates a previously allocated memory block.
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
         // perform layout adjustments
         let (size, _) = LinkedListAllocator::size_align(layout);

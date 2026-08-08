@@ -2,6 +2,7 @@ use alloc::alloc::{Layout, GlobalAlloc};
 use core::{ptr, mem, ptr::NonNull};
 use super::Locked;
 
+/// A node stored inside a free memory block.
 struct ListNode {
     next: Option<&'static mut ListNode>,
 }
@@ -12,8 +13,13 @@ struct ListNode {
 /// the block alignment.
 const BLOCK_SIZES: &[usize] = &[8, 16, 32, 64, 128, 256, 512, 1024, 2048];
 
+/// A fixed-size block allocator
 pub struct FixedSizeBlockAllocator {
+    /// Head of the list
     list_heads: [Option<&'static mut ListNode>; BLOCK_SIZES.len()],
+    
+    /// The allocator used allocations thaat do not fit into a fixed-size
+    /// block.
     fallback_allocator: linked_list_allocator::Heap,
 }
 
@@ -54,7 +60,11 @@ impl FixedSizeBlockAllocator {
     }
 }
 
+
+/// Implements Rust's global allocation interface for the fixed-size block
+/// allocator.
 unsafe impl GlobalAlloc for Locked<FixedSizeBlockAllocator> {
+    /// Allocates memory using a fixed-size block when possible
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         let mut allocator = self.lock();
         match FixedSizeBlockAllocator::list_index(&layout) {
@@ -79,6 +89,7 @@ unsafe impl GlobalAlloc for Locked<FixedSizeBlockAllocator> {
         }
     }
 
+    /// Deallocates a previously allocated block
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
         let mut allocator = self.lock();
         match FixedSizeBlockAllocator::list_index(&layout) {
